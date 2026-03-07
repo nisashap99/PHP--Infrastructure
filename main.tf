@@ -1,0 +1,32 @@
+resource "aws_instance" "PHP--Infrastructure" {
+  ami                    = "ami-0220d79f3f480ecf5" # devops-practice AMI
+  instance_type          = "t3.micro"
+  vpc_security_group_ids = [aws_security_group.allow_tls.id]
+
+  tags = {
+    Name = "PHP--Infrastructure"
+  }
+}
+
+resource "aws_security_group" "allow_tls" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic and all outbound traffic"
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "allow_tls"
+  }
+}
