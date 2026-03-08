@@ -9,9 +9,9 @@ pipeline {
         PORT = "8082"
 
         AWS_REGION = "us-east-1"
-        ACCOUNT_ID = "516861151784"
+        ACC_ID = "516861151784"
 
-        ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/php-devops-app"
+        ECR_REPO = "${ACC_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/php-devops-app"
     }
 
     stages { 
