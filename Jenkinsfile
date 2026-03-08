@@ -1,3 +1,5 @@
+// 
+
 pipeline {
     agent any
 
@@ -5,6 +7,11 @@ pipeline {
         IMAGE_NAME = "php-devops-app"
         CONTAINER_NAME = "php-container"
         PORT = "8082"
+
+        AWS_REGION = "us-east-1"
+        ACCOUNT_ID = "516861151784"
+
+        ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/php-devops-app"
     }
 
     stages {
@@ -29,6 +36,39 @@ pipeline {
             }
         }
 
+        stage('Login to Amazon ECR') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION \
+                | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                '''
+            }
+        }
+
+        stage('Tag Docker Image') {
+            steps {
+                sh '''
+                docker tag $IMAGE_NAME:latest $ECR_REPO:latest
+                '''
+            }
+        }
+
+        stage('Push Image to ECR') {
+            steps {
+                sh '''
+                docker push $ECR_REPO:latest
+                '''
+            }
+        }
+
+        stage('Pull Image from ECR') {
+            steps {
+                sh '''
+                docker pull $ECR_REPO:latest
+                '''
+            }
+        }
+
         stage('Stop Old Container') {
             steps {
                 sh '''
@@ -40,7 +80,7 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 sh '''
-                docker run -d -p $PORT:80 --name $CONTAINER_NAME $IMAGE_NAME
+                docker run -d -p $PORT:80 --name $CONTAINER_NAME $ECR_REPO:latest
                 '''
             }
         }
@@ -56,7 +96,7 @@ pipeline {
 
     post {
         success {
-            echo "Deployment successful🚀"
+            echo "Deployment successful 🚀"
         }
         failure {
             echo "Pipeline failed ❌"
