@@ -35,6 +35,7 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 sh '''
+                docker rm -f php-container
                 docker run -d -p $PORT:80 --name $CONTAINER_NAME $ECR_REPO:latest
                 '''
             }
