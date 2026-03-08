@@ -14,66 +14,21 @@ pipeline {
         ECR_REPO = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/php-devops-app"
     }
 
-    stages {
+    stages { 
 
-        stage('Clean Workspace') {
+        stage('Docker Build') {
             steps {
-                cleanWs()
-            }
-        }
+                script {
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
 
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main', url: 'https://github.com/nisashap99/PHP--Infrastructure.git'
-            }
-        }
+                        docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/php-devops-app:latest .
 
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                docker build -t $IMAGE_NAME .
-                '''
-            }
-        }
-
-        stage('Login to Amazon ECR') {
-            steps {
-                sh '''
-                aws ecr get-login-password --region $AWS_REGION \
-                | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                '''
-            }
-        }
-
-        stage('Tag Docker Image') {
-            steps {
-                sh '''
-                docker tag $IMAGE_NAME:latest $ECR_REPO:latest
-                '''
-            }
-        }
-
-        stage('Push Image to ECR') {
-            steps {
-                sh '''
-                docker push $ECR_REPO:latest
-                '''
-            }
-        }
-
-        stage('Pull Image from ECR') {
-            steps {
-                sh '''
-                docker pull $ECR_REPO:latest
-                '''
-            }
-        }
-
-        stage('Stop Old Container') {
-            steps {
-                sh '''
-                docker rm -f $CONTAINER_NAME || true
-                '''
+                        docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/php-devops-app:latest
+                        """
+                    }
+                }
             }
         }
 
@@ -85,13 +40,6 @@ pipeline {
             }
         }
 
-        stage('Verify Deployment') {
-            steps {
-                sh '''
-                docker ps
-                '''
-            }
-        }
     }
 
     post {
