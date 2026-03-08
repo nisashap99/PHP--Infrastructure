@@ -4,28 +4,46 @@ pipeline {
     agent any
 
     environment {
+        REGISTRY = "516861151784.dkr.ecr.us-east-1.amazonaws.com"
         IMAGE_NAME = "php-devops-app"
         CONTAINER_NAME = "php-container"
         PORT = "8082"
-
         AWS_REGION = "us-east-1"
-        ACC_ID = "516861151784"
-
-        ECR_REPO = "${ACC_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/php-devops-app"
     }
 
-    stages { 
+    stages {
+
+        stage('Docker Login') {
+            steps {
+                script{
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                           aws ecr get-login-password --region $AWS_REGION \
+                            | docker login --username AWS --password-stdin $REGISTRY
+                        """
+                    }
+                }
+            }
+        }
 
         stage('Docker Build') {
             steps {
-                script {
+                script{
                     withAWS(region: 'us-east-1', credentials: 'aws-creds') {
                         sh """
-                        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                            docker build -t $REGISTRY/$IMAGE_NAME:latest .
+                        """
+                    }
+                }
+            }
+        }
 
-                        docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/php-devops-app:latest .
-
-                        docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/php-devops-app:latest
+        stage('Docker Image Push to ECR ') {
+            steps {
+                script{
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                            docker push $REGISTRY/$IMAGE_NAME:latest
                         """
                     }
                 }
@@ -35,17 +53,23 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 sh '''
-                docker rm -f php-container
-                docker run -d -p $PORT:80 --name $CONTAINER_NAME $ECR_REPO:latest
+                docker rm -f $CONTAINER_NAME || true
+                docker run -d -p 8082:80 --name $CONTAINER_NAME $REGISTRY/$IMAGE_NAME:latest
+                docker ps
                 '''
             }
         }
 
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
     }
 
     post {
         success {
-            echo "Deployment successful🚀"
+            echo "Deployment successful 🚀"
         }
         failure {
             echo "Pipeline failed ❌"
