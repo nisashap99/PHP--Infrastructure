@@ -78,6 +78,7 @@ sudo systemctl enable jenkins
 sudo systemctl start jenkins
 
 sudo systemctl status jenkins
+
 # sudo nano /usr/lib/systemd/system/jenkins.service ---> if we want to change Jenkins port form 8080 -8081
 # sudo dnf install nano -y
 # change Environment="JENKINS_PORT=8081"
