@@ -1,82 +1,91 @@
 pipeline {
-agent any
+    agent any
 
-```
-environment {
-    REGISTRY = "516861151784.dkr.ecr.us-east-1.amazonaws.com"
-    IMAGE_NAME = "php-devops-app"
-    AWS_REGION = "us-east-1"
-    IMAGE_TAG = "build-${BUILD_NUMBER}"
-}
+    environment {
+        REGISTRY = "516861151784.dkr.ecr.us-east-1.amazonaws.com"
+        IMAGE_NAME = "php-devops-app"
+        CONTAINER_NAME = "php-container"
+        PORT = "8082"
+        AWS_REGION = "us-east-1"
+        IMAGE_TAG = "build-${BUILD_NUMBER}"
+    }
 
-stages {
+    stages {
 
-    stage('Docker Login') {
-        steps {
-            script {
-                withAWS(region: 'us-east-1', credentials: 'aws-creds') {
-                    sh '''
-                    aws ecr get-login-password --region $AWS_REGION \
-                    | docker login --username AWS --password-stdin $REGISTRY
-                    '''
+        stage('Docker Login') {
+            steps {
+                script{
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                           aws ecr get-login-password --region $AWS_REGION \
+                            | docker login --username AWS --password-stdin $REGISTRY
+                        """
+                    }
                 }
+            }
+        }
+
+        stage('Docker Build Image') {
+            steps {
+                script{
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                            docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Docker Push Image to ECR ') {
+            steps {
+                script{
+                    withAWS(region: 'us-east-1', credentials: 'aws-creds') {
+                        sh """
+                            docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f deployment.yaml --validate=false'
+                sh 'kubectl apply -f service.yaml --validate=false'
+                sh 'kubectl apply -f hpa.yaml --validate=false'
+
+                sh """
+                    kubectl set image deployment/php-devops-app \
+                    php-container=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                    """
+                    echo "$IMAGE_TAG"
+                }
+        }
+
+        /* stage('Deploy Container') {
+            steps {
+                sh '''
+                docker rm -f $CONTAINER_NAME || true
+                docker run -d -p 8082:80 --name $CONTAINER_NAME $REGISTRY/$IMAGE_NAME:latest
+                docker ps
+                '''
+            }
+        } */
+
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
             }
         }
     }
 
-    stage('Docker Build Image') {
-        steps {
-            sh '''
-            docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
-            '''
+    post {
+        success {
+            echo "Deployment successful 🚀"
+        }
+        failure {
+            echo "Pipeline failed ❌"
         }
     }
-
-    stage('Docker Push Image to ECR') {
-        steps {
-            sh '''
-            docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-            '''
-        }
-    }
-
-    stage('Deploy to Kubernetes') {
-        steps {
-
-            sh '''
-            kubectl apply -f php-deployment.yaml --validate=false
-            kubectl apply -f php-service.yaml --validate=false
-            '''
-
-            sh """
-            kubectl set image deployment/php-app \
-            php-app=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-            """
-
-            sh '''
-            kubectl rollout status deployment/php-app
-            kubectl get pods
-            kubectl get svc
-            '''
-
-        }
-    }
-
-    stage('Clean Workspace') {
-        steps {
-            cleanWs()
-        }
-    }
-}
-
-post {
-    success {
-        echo "Deployment successful 🚀"
-    }
-    failure {
-        echo "Pipeline failed ❌"
-    }
-}
-```
-
 }
