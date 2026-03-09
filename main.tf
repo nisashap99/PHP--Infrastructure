@@ -1,9 +1,15 @@
 resource "aws_instance" "PHP--Infrastructure" {
-  ami                    = "ami-0220d79f3f480ecf5" # devops-practice AMI
-  instance_type          = "t3.micro"
+  ami                    = "ami-0220d79f3f480ecf5"
+  instance_type          = "t3.small"
   vpc_security_group_ids = [aws_security_group.allow_tls.id]
 
-   user_data = file("setup.sh")
+  user_data = file("setup.sh")
+
+  root_block_device {
+    volume_size           = 50
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   tags = {
     Name = "PHP--Infrastructure"
