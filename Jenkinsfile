@@ -1,7 +1,7 @@
 pipeline {
 agent any
 
-```
+
 environment {
     REGISTRY = "516861151784.dkr.ecr.us-east-1.amazonaws.com"
     IMAGE_NAME = "php-devops-app"
@@ -75,6 +75,6 @@ post {
         echo "Pipeline failed ❌"
     }
 }
-```
+
 
 }
